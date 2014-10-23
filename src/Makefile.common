@@ -1,11 +1,20 @@
-SHELL = /bin/bash
+OS := $(shell uname)
+
+# Setting the right shell for make
+ifeq ($(OS), Linux)
+	SHELL := $(shell getent passwd $$LOGNAME | sed "s/.*[:]\(.*\)$$/\1/")
+endif
 
 # Microcontroller settings
 MCU = atmega328p
 F_CPU = 16000000
 
 # Device for programmer
-PORT = $(wildcard /dev/tty.usbmodemf*)
+ifeq ($(OS), Linux)
+	PORT = $(wildcard /dev/ttyACM*)
+else
+	PORT = $(wildcard /dev/tty.usbmodemf*)
+endif
 
 AR      = avr-ar
 AS      = avr-as
@@ -15,6 +24,12 @@ OBJCOPY = avr-objcopy
 OBJDUMP = avr-objdump
 RANLIB  = avr-ranlib
 READELF = avr-readelf
+
+ifeq ($(OS), Linux)
+	SEDI = sed -i
+else # OS X sed
+	SEDI = sed -i ""
+endif
 
 ARFLAGS  =
 CFLAGS   = -g -Os -Wall -Wextra -Werror
@@ -64,11 +79,11 @@ install-%: %.hex
 
 %.d: %.c
 	$(CC) -MD -MM $(CPPFLAGS) -o $@ $<
-	sed -i "" -e "s,\($*\)\.o[ :]*,\1.o $@ : ,g" $@
+	$(SEDI) -e "s,\($*\)\.o[ :]*,\1.o $@ : ,g" $@
 
 %.d: %.cpp
 	$(CXX) -MD -MM $(CPPFLAGS) -o $@ $<
-	sed -i "" -e "s,\($*\)\.o[ :]*,\1.o $@ : ,g" $@
+	$(SEDI) -e "s,\($*\)\.o[ :]*,\1.o $@ : ,g" $@
 
 clean::
 	rm -vf *.{elf,hex,d,o,a,map,lst,rpo} *~
