@@ -14,15 +14,17 @@ test_spi.elf: test_spi.o hal/libhal.a
 test_temp_sensor.elf: test_temp_sensor.o hal/libhal.a
 test_timer0.elf: test_timer0.o hal/libhal.a
 
-CPPFLAGS += -Ibase -Ihal
-LDFLAGS += -Lbase -Lhal
+CPPFLAGS += -Ibase -Ihal -Iethernet
+LDFLAGS += -Lbase -Lhal -Lethernet
 
 libs:
 	make -C base
 	make -C hal
+	make -C ethernet
 
 clean::
 	make -C base clean
 	make -C hal clean
+	make -C ethernet clean
 
 .PHONY: all libs
