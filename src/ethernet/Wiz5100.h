@@ -85,8 +85,8 @@ namespace Wiz5100 {
 	const uint16_t RX_BUF_MASK = 0x07FF;
 	const uint16_t RX_BUF_BASE = 0x6000;
 
-	template<typename T> void write(uint16_t addr, T data);
-	void write(uint16_t addr, volatile uint16_t data);
+	void write8(uint16_t addr, uint8_t data);
+	void write16(uint16_t addr, volatile uint16_t data);
 	void write(uint16_t addr, uint8_t *data, int n);
 	uint8_t read8(uint16_t addr);
 	uint16_t read16(uint16_t addr);

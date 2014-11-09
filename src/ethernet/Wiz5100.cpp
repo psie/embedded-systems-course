@@ -7,7 +7,7 @@
 const static Pin::Pin<SS> slaveSelect;
 
 /* The template type is to achieve polymorphism for this function */
-template<typename T> void Wiz5100::write(uint16_t addr, T data) {
+void Wiz5100::write8(uint16_t addr, uint8_t data) {
 	slaveSelect.low();
 	SPI::transmit(0xF0); // 0xF0 is the write OP-code
 	SPI::transmit((addr & 0xFF00) >> 8);
@@ -16,14 +16,14 @@ template<typename T> void Wiz5100::write(uint16_t addr, T data) {
 	slaveSelect.high();
 }
 
-void Wiz5100::write(uint16_t addr, uint16_t data) {
-	write(addr, (uint8_t)((data & 0xFF00) >> 8));
-	write(addr + 1, (uint8_t)(data & 0x00FF));
+void Wiz5100::write16(uint16_t addr, uint16_t data) {
+	write8(addr, (uint8_t)((data & 0xFF00) >> 8));
+	write8(addr + 1, (uint8_t)(data & 0x00FF));
 }
 
 void Wiz5100::write(uint16_t addr, uint8_t *data, int n) {
 	while (n > 0) {
-		write(addr++, *data++);
+		write8(addr++, *data++);
 		n--;
 	}
 }
@@ -74,10 +74,10 @@ void Wiz5100::init() {
 
 	SPI::init(SPI::MASTER, SPI::CLK_DIV2, SPI::MSBFIRST);
 		
-	write(MR, MR_RST);
+	write8(MR, MR_RST);
 	/* Set RX and TX memory size (2KB per sock each) */
-	write(RMSR, BUFSIZE_MODE);
-	write(TMSR, BUFSIZE_MODE);
+	write8(RMSR, BUFSIZE_MODE);
+	write8(TMSR, BUFSIZE_MODE);
 }
 
 void Wiz5100::setMAC(uint8_t *macp) {
@@ -99,24 +99,24 @@ void Wiz5100::socket(uint8_t sock, uint8_t eth_protocol, uint16_t sport) {
 	// Make sure we close the socket first
 	if (read8(S_FIELD(sock, S_SR)) == SOCK_CLOSED)
 		close(sock); 
-	write(S_FIELD(sock, S_MR), eth_protocol);
-	write(S_FIELD(sock, S_SPORT), sport);
+	write8(S_FIELD(sock, S_MR), eth_protocol);
+	write16(S_FIELD(sock, S_SPORT), sport);
 	open(sock);
 }
 
 void Wiz5100::open(uint8_t sock) {
-	write(S_FIELD(sock, S_CR), CR_OPEN);
+	write8(S_FIELD(sock, S_CR), CR_OPEN);
 	// Wait for opening 
 	while(read8(S_FIELD(sock, S_CR)));
 }
 
 void Wiz5100::close(uint8_t sock) {
-	write(S_FIELD(sock, S_CR), CR_CLOSE);
+	write8(S_FIELD(sock, S_CR), CR_CLOSE);
 	while(read8(S_FIELD(sock, S_CR)));
 }
 
 void Wiz5100::send(uint8_t sock) {
-	write(S_FIELD(sock, S_CR), CR_SEND);
+	write8(S_FIELD(sock, S_CR), CR_SEND);
 	// Wait for sending to complete
 	while (read8(S_FIELD(sock, S_CR))); 
 }
@@ -149,8 +149,8 @@ void Wiz5100::sockRead(uint8_t sock, uint8_t *buf, unsigned int n) {
 	
 	mem_addr += n;
 	
-	write(S_FIELD(sock, S_RX_RD), mem_addr);
-	write(S_FIELD(sock, S_CR), CR_RECV);
+	write16(S_FIELD(sock, S_RX_RD), mem_addr);
+	write8(S_FIELD(sock, S_CR), CR_RECV);
 	while (read8(S_FIELD(sock, S_CR)));
 }
 
@@ -185,7 +185,7 @@ void Wiz5100::sockWrite(uint8_t sock, uint8_t *buf, uint16_t seek,
 		write(mem_addr, buf, n);
 
 	tx_wr += n;
-	write(S_FIELD(sock, S_TX_WR), tx_wr);
+	write16(S_FIELD(sock, S_TX_WR), tx_wr);
 }
 
 uint16_t Wiz5100::sockRXReceived(uint8_t sock) {

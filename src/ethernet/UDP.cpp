@@ -6,7 +6,7 @@ void UDPSock::Begin(uint8_t *ipp, uint16_t dport) {
 	txOffset = 0;
 	header.length = 0;
 	write(S_FIELD(sock, Wiz5100::S_DADDR), ipp, 4);
-	write(S_FIELD(sock, Wiz5100::S_DPORT), dport);
+	write16(S_FIELD(sock, Wiz5100::S_DPORT), dport);
 }
 
 void UDPSock::Fillbuf(uint8_t *buf, uint16_t n) {
