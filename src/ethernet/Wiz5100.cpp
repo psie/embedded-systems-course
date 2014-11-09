@@ -54,7 +54,11 @@ void Wiz5100::read(uint16_t addr, uint8_t *data, int n) {
 	}
 }
 
-/* This is to ensure consistent reads */ 
+/* This is to ensure consistent reads. I'm afraid this case is not accurately 
+ * described in the manual. The bytes seem to be read in the right order, 
+ * still, as I recall, disrupted reads continued to occur so I must have just
+ * mimicked what is done in Arduino. */ 
+
 uint16_t Wiz5100::doubleRead(uint16_t addr) {
 	volatile uint16_t val1, val2 = 0;
 
