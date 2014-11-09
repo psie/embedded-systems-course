@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "Wiz5100.h"
+#include "Common.h"
 
 class UDPSock {
 	private:
@@ -25,11 +26,11 @@ class UDPSock {
 		~UDPSock() {
 			Wiz5100::close(sock);
 		}
-		void UDPBegin(uint8_t *ipp, uint16_t dport);
-		void UDPFillbuf(uint8_t *buf, unsigned int n);
-		void UDPSend();
-		unsigned int UDPStartRecv();
-		unsigned int UDPRead(uint8_t *buf, unsigned int n);
-		void UDPFlush();
+		void Begin(uint8_t *ipp, uint16_t dport);
+		void Fillbuf(uint8_t *buf, uint16_t n);
+		void Send();
+		unsigned int StartRecv();
+		unsigned int Read(uint8_t *buf, uint16_t n);
+		void Flush();
 };
 #endif

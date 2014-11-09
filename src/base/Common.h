@@ -6,6 +6,8 @@
 #define UNUSED __attribute__((unused))
 #define PURE __attribute__((pure))
 
+#define htons(x) ((x) >> 8 | (x) << 8)
+
 template <typename T>
 void bclr(T &word, uint8_t pos) { word &= ~(1 << pos); }
 

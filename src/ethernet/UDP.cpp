@@ -1,39 +1,41 @@
 #include "UDP.h"
 
-void UDPSock::UDPBegin(uint8_t *ipp, uint16_t dport) {
+using namespace Wiz5100;
+
+void UDPSock::Begin(uint8_t *ipp, uint16_t dport) {
 	txOffset = 0;
 	header.length = 0;
-	Wiz5100::write(S_FIELD(sock, Wiz5100::S_DADDR), ipp, 4);
-	Wiz5100::write(S_FIELD(sock, Wiz5100::S_DPORT), dport);
+	write(S_FIELD(sock, Wiz5100::S_DADDR), ipp, 4);
+	write(S_FIELD(sock, Wiz5100::S_DPORT), dport);
 }
 
-void UDPSock::UDPFillbuf(uint8_t *buf, unsigned int n) {
-	Wiz5100::sockWrite(sock, buf, txOffset, n);
+void UDPSock::Fillbuf(uint8_t *buf, uint16_t n) {
+	sockWrite(sock, buf, txOffset, n);
 	txOffset += n;
 }
 
-void UDPSock::UDPSend() {
-	Wiz5100::send(sock);
+void UDPSock::Send() {
+	send(sock);
 }
 
-unsigned int UDPSock::UDPStartRecv() {
+unsigned int UDPSock::StartRecv() {
 	volatile uint16_t size;
 
-	UDPFlush();
+	Flush();
 
-	size = Wiz5100::doubleRead(S_FIELD(sock, Wiz5100::S_RX_RSR));
+	size = doubleRead(S_FIELD(sock, Wiz5100::S_RX_RSR));
 	if (size == 0)
 		return 0;
 
-	Wiz5100::sockRead(sock, (uint8_t*)&header, 8);
+	sockRead(sock, (uint8_t*)&header, 8);
 
-	header.length = header.length >> 8 | header.length << 8;
-	header.remotePort = header.remotePort >> 8 | header.remotePort << 8;
+	header.length = htons(header.length);
+	header.remotePort = htons(header.remotePort);
 
 	return header.length;
 }
 
-unsigned int UDPSock::UDPRead(uint8_t *buf, unsigned int n) {
+unsigned int UDPSock::Read(uint8_t *buf, uint16_t n) {
 	unsigned int read;
 
 	if (header.length == 0)
@@ -41,17 +43,17 @@ unsigned int UDPSock::UDPRead(uint8_t *buf, unsigned int n) {
 	
 	if (n > header.length) {
 		read = header.length;
-		Wiz5100::sockRead(sock, buf, read);
+		sockRead(sock, buf, read);
 		header.length = 0;
 		return read;
 	}
 	
-	Wiz5100::sockRead(sock, buf, n);
+	sockRead(sock, buf, n);
 	header.length -= n;
 	return n;
 }
 
-void UDPSock::UDPFlush() {
+void UDPSock::Flush() {
 	uint8_t c;
-	while (UDPRead(&c, 1) > 0);
+	while (Read(&c, 1) > 0);
 }

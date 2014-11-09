@@ -82,7 +82,7 @@ void send_dhcp_msg(UDPSock *socket, uint8_t type, uint16_t time_passed)
 	
 	memset(buf, 0, 32);
 
-	socket->UDPBegin(dest_ip, DHCP_SERVER_PORT);
+	socket->Begin(dest_ip, DHCP_SERVER_PORT);
 
 	buf[0] = DHCP_BOOTREQUEST;
 	buf[1] = DHCP_HTYPE10MB;
@@ -97,14 +97,14 @@ void send_dhcp_msg(UDPSock *socket, uint8_t type, uint16_t time_passed)
 	// yiaddr: already zeroed
 	// siaddr: already zeroed
 	// giaddr: already zeroed
-	socket->UDPFillbuf(buf, 28);
+	socket->Fillbuf(buf, 28);
 	memset(buf, 0, 32);
 	memcpy(buf, dhcp_source_mac, 6); // chaddr
-	socket->UDPFillbuf(buf, 16);
+	socket->Fillbuf(buf, 16);
 	memset(buf, 0, 32);
 	// fill 192b zeroed out
 	for (i = 0; i < 6; ++i)
-		socket->UDPFillbuf(buf, 32);
+		socket->Fillbuf(buf, 32);
 	buf[0] = (uint8_t)((DHCP_MAGIC_COOKIE >> 24) & 0xFF);
 	buf[1] = (uint8_t)((DHCP_MAGIC_COOKIE >> 16) & 0xFF);
 	buf[2] = (uint8_t)((DHCP_MAGIC_COOKIE >> 8) & 0xFF);
@@ -119,7 +119,7 @@ void send_dhcp_msg(UDPSock *socket, uint8_t type, uint16_t time_passed)
 	buf[16] = DHCP_HOSTNAME;
 	buf[17] = strlen(HOSTNAME); // hostname
 	memcpy(buf + 18, HOSTNAME, strlen(HOSTNAME));
-	socket->UDPFillbuf(buf, 18 + strlen(HOSTNAME));
+	socket->Fillbuf(buf, 18 + strlen(HOSTNAME));
 	if (type == DHCP_REQUEST) {
 		buf[0] = DHCP_REQUESTED_IP;
 		buf[1] = 4;
@@ -127,7 +127,7 @@ void send_dhcp_msg(UDPSock *socket, uint8_t type, uint16_t time_passed)
 		buf[6] = DHCP_SERVER_ID;
 		buf[7] = 4;
 		memcpy(buf + 8, dhcp_server_ip, 4);
-		socket->UDPFillbuf(buf, 12);
+		socket->Fillbuf(buf, 12);
 	}
 	buf[0] = DHCP_PARAM_REQUEST;
 	buf[1] = 6;
@@ -138,8 +138,8 @@ void send_dhcp_msg(UDPSock *socket, uint8_t type, uint16_t time_passed)
 	buf[6] = DHCP_T1;
 	buf[7] = DHCP_T2;
 	buf[8] = DHCP_ENDOPT;
-	socket->UDPFillbuf(buf, 9);
-	socket->UDPSend();
+	socket->Fillbuf(buf, 9);
+	socket->Send();
 }
 
 uint8_t receive_dhcp_msg(UDPSock *socket, uint32_t timeout, uint32_t *resid)
@@ -150,83 +150,83 @@ uint8_t receive_dhcp_msg(UDPSock *socket, uint32_t timeout, uint32_t *resid)
 	uint32_t id;
 	RIP_MSG_FIXED rmsg;
 
-	while (socket->UDPStartRecv() == 0) {
+	while (socket->StartRecv() == 0) {
 		if (Millis::millis() - start > timeout)
 			return DHCP_TIMEDOUT;
 	}
-	socket->UDPRead((uint8_t*)&rmsg, sizeof(RIP_MSG_FIXED));
+	socket->Read((uint8_t*)&rmsg, sizeof(RIP_MSG_FIXED));
 
 	if (rmsg.op != DHCP_BOOTREPLY) { // || remote_port != DHCP_SERVER_PORT)
-		socket->UDPFlush();
+		socket->Flush();
 		return 0;
 	}
 
 	id = htonl(rmsg.xid);
 	if (memcmp(rmsg.chaddr, dhcp_source_mac, 6) != 0 || id != *resid) {
-		socket->UDPFlush();
+		socket->Flush();
 		return 0; // ...
 	}
 	memcpy(dhcp_local_ip, rmsg.yiaddr, 4);
 	// skip until the interesting options
 	for (i = 240 - sizeof(RIP_MSG_FIXED); i > 0; i--)
-		socket->UDPRead(&c, 1);
+		socket->Read(&c, 1);
 
-	while (socket->UDPRead(&c, 1) > 0) {
+	while (socket->Read(&c, 1) > 0) {
 		switch (c) {
 			case DHCP_ENDOPT:
 				break;
 			case DHCP_PADOPTION:
 				break;
 			case DHCP_MESSAGE_TYPE:
-				socket->UDPRead(&optlen, 1);
-				socket->UDPRead(&type, 1);
+				socket->Read(&optlen, 1);
+				socket->Read(&type, 1);
 				break;
 			case DHCP_SUBMASK:
-				socket->UDPRead(&optlen, 1);
-				socket->UDPRead(dhcp_submask, 4);
+				socket->Read(&optlen, 1);
+				socket->Read(dhcp_submask, 4);
 				break;
 			case DHCP_ROUTER:
-				socket->UDPRead(&optlen, 1);
-				socket->UDPRead(dhcp_gw, 4);
+				socket->Read(&optlen, 1);
+				socket->Read(dhcp_gw, 4);
 				for (optlen -= 4; optlen > 0; --optlen)
-					socket->UDPRead(&c, 1);
+					socket->Read(&c, 1);
 				break;
 			case DHCP_DNS:
-				socket->UDPRead(&optlen, 1);
+				socket->Read(&optlen, 1);
 				// to be continued...
 				while(optlen > 0) {
-					socket->UDPRead(&c, 1);
+					socket->Read(&c, 1);
 					optlen--;
 				}
 				break;
 			case DHCP_SERVER_ID:
-				socket->UDPRead(&optlen, 1);
+				socket->Read(&optlen, 1);
 				if (dhcp_server_ip[0] == 0) // || remote_ip != dhcp_server_ip)
-					socket->UDPRead(dhcp_server_ip, 4);
+					socket->Read(dhcp_server_ip, 4);
 				else
 					while(optlen > 0) {
-						socket->UDPRead(&c, 1);
+						socket->Read(&c, 1);
 						optlen--;
 					}
 				break;
 			case DHCP_T1:
-				socket->UDPRead(&optlen, 1);
-				socket->UDPRead((uint8_t*)&T1, sizeof(T1));
+				socket->Read(&optlen, 1);
+				socket->Read((uint8_t*)&T1, sizeof(T1));
 				T1 = htonl(T1);
 				break;
 			case DHCP_T2:
-				socket->UDPRead(&optlen, 1);
-				socket->UDPRead((uint8_t*)&T2, sizeof(T1));
+				socket->Read(&optlen, 1);
+				socket->Read((uint8_t*)&T2, sizeof(T1));
 				T2 = htonl(T2);
 				break;
 			case DHCP_LEASETIME:
-				socket->UDPRead(&optlen, 1);
-				socket->UDPRead((uint8_t*)&lease_time, sizeof(lease_time));
+				socket->Read(&optlen, 1);
+				socket->Read((uint8_t*)&lease_time, sizeof(lease_time));
 				break;
 			default:
-				socket->UDPRead(&optlen, 1);
+				socket->Read(&optlen, 1);
 				while(optlen > 0) {
-					socket->UDPRead(&c, 1);
+					socket->Read(&c, 1);
 					optlen--;
 				}
 				break;
