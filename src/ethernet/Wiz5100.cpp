@@ -6,34 +6,33 @@
 
 const static Pin::Pin<SS> slaveSelect;
 
-template<typename T> void Wiz5100::write(Address addr, T data) {
+/* The template type is to achieve polymorphism for this function */
+template<typename T> void Wiz5100::write(uint16_t addr, T data) {
 	slaveSelect.low();
-	SPI::transmit(writeOpcode);
+	SPI::transmit(0xF0); // 0xF0 is the write OP-code
 	SPI::transmit((addr & 0xFF00) >> 8);
 	SPI::transmit(addr & 0x00FF);
 	SPI::transmit(data);
 	slaveSelect.high();
 }
 
-void Wiz5100::write(Address addr, uint16_t data) {
+void Wiz5100::write(uint16_t addr, uint16_t data) {
 	write(addr, (uint8_t)((data & 0xFF00) >> 8));
 	write(addr + 1, (uint8_t)(data & 0x00FF));
 }
 
-void Wiz5100::write(Address addr, uint8_t *data, int n) {
-	int i = 0;
-
+void Wiz5100::write(uint16_t addr, uint8_t *data, int n) {
 	while (n > 0) {
-		write(addr++, data[i++]);
+		write(addr++, *data++);
 		n--;
 	}
 }
 
-uint8_t Wiz5100::read8(Address addr) {
+uint8_t Wiz5100::read8(uint16_t addr) {
 	uint8_t r = 0;
 
 	slaveSelect.low();
-	SPI::transmit(readOpcode);
+	SPI::transmit(0x0F); // 0x0F is the read OP-code
 	SPI::transmit((addr & 0xFF00) >> 8);
 	SPI::transmit(addr & 0x00FF);
 	r = SPI::transmit(0);
@@ -41,25 +40,22 @@ uint8_t Wiz5100::read8(Address addr) {
 	return r;
 }
 
-uint16_t Wiz5100::read16(Address addr) {
-	volatile uint16_t r;
+uint16_t Wiz5100::read16(uint16_t addr) {
+	uint8_t lo = read8(addr++);
+	uint8_t hi = read8(addr);
 
-	r = (read8(addr) & 0x00FF) << 8;
-	r += read8(addr + 1);
-
-	return r;
+	return ((hi << 8) | lo);
 }
 
-void Wiz5100::read(Address addr, uint8_t *data, int n) {
-	volatile unsigned int i = 0;
-
+void Wiz5100::read(uint16_t addr, uint8_t *data, int n) {
 	while (n > 0) {
-		data[i++] = read8(addr++);
+		*data++ = read8(addr++);
 		n--;
 	}
 }
 
-uint16_t Wiz5100::doubleRead(Address addr) {
+/* This is to ensure consistent reads */ 
+uint16_t Wiz5100::doubleRead(uint16_t addr) {
 	volatile uint16_t val1, val2 = 0;
 
 	do {
@@ -130,6 +126,17 @@ void Wiz5100::sockRead(uint8_t sock, uint8_t *buf, unsigned int n) {
 	volatile uint16_t offset;
 	volatile uint16_t mem_addr;
 
+	/* First we read the offset within the chips buffer where our received data
+	 * starts (as in the manual, this value has to be truncated to represent an
+	 * actual offset by & RX_BUF_MASK). Then we compute an actual address and
+	 * either we have to wrap around the buffer boundary, that is read 
+	 * everything untill the end of the buffer and the remaining part from the
+	 * start, or our data fitted and we read it stright. Finally, we store the
+	 * full address back from where we obtained the offset. Finally we inform
+	 * the chip the we have read the data and wait for the confirmation. 
+	 * XXX - I should probably take size of received data (RSR) reported by the
+	 * chip into consideration and not allow the user to read past that. */
+
 	offset = read16(S_FIELD(sock, S_RX_RD)) & RX_BUF_MASK;
 	mem_addr = offset + RX_BUF_BASE + BUF_SIZE * sock;
 	if (offset + n > BUF_SIZE) { // Wrap around
@@ -150,6 +157,15 @@ void Wiz5100::sockRead(uint8_t sock, uint8_t *buf, unsigned int n) {
 void Wiz5100::sockWrite(uint8_t sock, uint8_t *buf, uint16_t seek,
 		unsigned int n) {
 	volatile uint16_t freesize, tx_wr, offset, mem_addr;
+
+	/* This is somewhat analogous to previous function except that we take
+	 * available space to fill the send buffer with reported by the chip into
+	 * consideration (as below). The second difference is that we keep a record
+	 * in our socket structure of where we ended last time (seek), since I 
+	 * encountered issues with the value being updated in the chips register(?).
+	 * It is probably not updated until the command to send the data is 
+	 * received by the chip and I wanted to allow for filling the buffer
+	 * gradually before the actual sending */
 
 	do 
 		freesize = doubleRead(S_FIELD(sock, S_TX_FSR));
