@@ -3,7 +3,7 @@
 
 /* At the time of this writing the manual for the chip is available here:
  * https://www.sparkfun.com/datasheets/DevTools/Arduino/W5100_Datasheet_v1_1_6.pdf
- * if in doubt maybe it could clear some uncertanities */
+ * if in doubt maybe it could clear some uncertanities. */
 
 namespace Wiz5100 {
 	static const uint8_t MR_RST = 0b10000000;
@@ -96,7 +96,7 @@ namespace Wiz5100 {
 	void init();
 	void setMAC(uint8_t *macp);
 	void setStatic(uint8_t *macp, uint8_t *ipp,
-		uint8_t *subp, uint8_t *gtwp);
+        uint8_t *subp, uint8_t *gtwp);
 	
 	void socket(uint8_t sock, uint8_t eth_protocol, uint16_t port);
 	void open(uint8_t sock);

@@ -131,7 +131,7 @@ void Wiz5100::sockRead(uint8_t sock, uint8_t *buf, unsigned int n) {
 	 * actual offset by & RX_BUF_MASK). Then we compute an actual address and
 	 * either we have to wrap around the buffer boundary, that is read 
 	 * everything untill the end of the buffer and the remaining part from the
-	 * start, or our data fitted and we read it stright. Finally, we store the
+	 * start, or our data fitted and we read it stright. Then, we store the
 	 * full address back from where we obtained the offset. Finally we inform
 	 * the chip the we have read the data and wait for the confirmation. 
 	 * XXX - I should probably take size of received data (RSR) reported by the
