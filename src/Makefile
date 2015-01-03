@@ -1,5 +1,5 @@
 PROGRAMS = led_blink.hex test_analog.hex test_eeprom.hex test_serial.hex \
-	   test_spi.hex test_temp_sensor.hex test_timer0.hex test_dhcp.hex
+	   test_spi.hex test_temp_sensor.hex test_timer0.hex
 
 all: libs $(PROGRAMS)
 
@@ -13,7 +13,6 @@ test_serial.elf: test_serial.o hal/libhal.a
 test_spi.elf: test_spi.o hal/libhal.a
 test_temp_sensor.elf: test_temp_sensor.o hal/libhal.a
 test_timer0.elf: test_timer0.o hal/libhal.a
-test_dhcp.elf: test_dhcp.o hal/libhal.a ethernet/libether.a
 
 CPPFLAGS += -Ibase -Ihal -Iethernet
 LDFLAGS += -Lbase -Lhal -Lethernet
